@@ -68,6 +68,73 @@ class OperationCatalogEntry:
             head = f"{head} — {self.summary}"
         return head
 
+    def to_prompt_block(self, include_schemas: bool = True) -> str:
+        """Multi-line block fed to the Planner LLM.
+
+        Designed to be token-economical: only fields a planner needs to pick
+        the operation and wire slots into it. Response schema is omitted by
+        default (planner doesn't need it to compose calls); enable
+        include_schemas for the full picture.
+        """
+        lines = [self.to_summary_line()]
+        if self.tags:
+            lines.append(f"  tags: {', '.join(self.tags)}")
+        if self.description and self.description != self.summary:
+            # Collapse multi-line descriptions to a single line to stay compact.
+            desc = " ".join(self.description.split())
+            if len(desc) > 200:
+                desc = desc[:197] + "..."
+            lines.append(f"  desc: {desc}")
+        if self.parameters:
+            lines.append("  params:")
+            for param in self.parameters:
+                req = "*" if param.get("required") else " "
+                ptype = param.get("type") or "any"
+                pdesc = (param.get("description") or "").strip()
+                tail = f" — {pdesc}" if pdesc else ""
+                lines.append(
+                    f"    {req} {param['name']} ({param['in']}, {ptype}){tail}"
+                )
+        if self.request_body:
+            req_mark = "*" if self.request_body.get("required") else " "
+            lines.append(f"  body:{req_mark}")
+            schema = self.request_body.get("schema")
+            if include_schemas and isinstance(schema, Mapping):
+                lines.append(_indent_schema(schema, indent="    "))
+        return "\n".join(lines)
+
+
+def _indent_schema(schema: Mapping[str, Any], indent: str = "") -> str:
+    """Compact one-level rendering of a JSON-schema object for prompts.
+
+    Goal: show field names + types + required without dumping the full
+    nested schema (cheap, deterministic, good enough for the planner).
+    """
+    stype = schema.get("type")
+    if stype == "object":
+        required = set(schema.get("required") or [])
+        props = schema.get("properties") or {}
+        lines = []
+        for name, prop in props.items():
+            mark = "*" if name in required else " "
+            ptype = prop.get("type") if isinstance(prop, Mapping) else "any"
+            pdesc = ""
+            if isinstance(prop, Mapping):
+                pdesc = (prop.get("description") or "").strip()
+            tail = f" — {pdesc}" if pdesc else ""
+            lines.append(f"{indent}{mark} {name}: {ptype}{tail}")
+        return "\n".join(lines) if lines else f"{indent}(empty object)"
+    if stype == "array":
+        item = schema.get("items") or {}
+        item_type = item.get("type") if isinstance(item, Mapping) else "any"
+        return f"{indent}array<{item_type}>"
+    if stype:
+        return f"{indent}{stype}"
+    # Fall back to a $ref or untyped schema
+    if isinstance(schema, Mapping) and "$ref" in schema:
+        return f"{indent}{schema['$ref']}"
+    return f"{indent}(schema omitted)"
+
 
 class OpenAPIClient:
     """Small OpenAPI 3.x operation caller."""

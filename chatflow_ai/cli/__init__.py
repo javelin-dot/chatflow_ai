@@ -121,13 +121,21 @@ def main(args: Optional[list] = None) -> None:
         from chatflow_ai.cli.shell import shell_command
         from chatflow_ai.cli.export import export_command
         from chatflow_ai.cli.inspect import inspect_command
-        
+        from chatflow_ai.cli.services_cli import (
+            services_command,
+            operations_command,
+            show_operation_command,
+        )
+
         cli.add_command(init_command)
         cli.add_command(train_command)
         cli.add_command(run_command)
         cli.add_command(shell_command)
         cli.add_command(export_command)
         cli.add_command(inspect_command)
+        cli.add_command(services_command)
+        cli.add_command(operations_command)
+        cli.add_command(show_operation_command)
         
         # 执行CLI
         cli(args)

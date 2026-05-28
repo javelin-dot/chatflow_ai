@@ -150,6 +150,28 @@ class OpenAPIRegistry:
             f"operationId '{operation_id}' not found in service '{service}'"
         )
 
+    def summarize_for_llm(
+        self,
+        services: Optional[List[str]] = None,
+        include_schemas: bool = True,
+    ) -> str:
+        """Render a planner-friendly catalog summary, grouped by service.
+
+        services: limit to these services; None means all registered.
+        include_schemas: include request_body field lists (more useful but
+                         larger). Disable when bumping into token limits.
+        """
+        target = services or sorted(self._catalogs.keys())
+        sections: List[str] = []
+        for name in target:
+            entries = self._catalogs.get(name)
+            if not entries:
+                continue
+            header = f"# service: {name} ({len(entries)} operations)"
+            blocks = [entry.to_prompt_block(include_schemas=include_schemas) for entry in entries]
+            sections.append("\n\n".join([header, *blocks]))
+        return "\n\n".join(sections)
+
     def resolve_anywhere(self, operation_id: str) -> Tuple[OpenAPIClient, OperationCatalogEntry]:
         """Find an operationId across all services (errors if ambiguous)."""
         matches: List[Tuple[OpenAPIClient, OperationCatalogEntry]] = []
