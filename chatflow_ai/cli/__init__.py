@@ -126,6 +126,7 @@ def main(args: Optional[list] = None) -> None:
             operations_command,
             show_operation_command,
         )
+        from chatflow_ai.cli.plan import plan_command
 
         cli.add_command(init_command)
         cli.add_command(train_command)
@@ -136,6 +137,7 @@ def main(args: Optional[list] = None) -> None:
         cli.add_command(services_command)
         cli.add_command(operations_command)
         cli.add_command(show_operation_command)
+        cli.add_command(plan_command)
         
         # 执行CLI
         cli(args)
