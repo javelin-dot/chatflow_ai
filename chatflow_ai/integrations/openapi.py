@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Dict, List, Mapping, Optional
 from urllib.parse import quote
 
 import httpx
@@ -37,6 +37,36 @@ class OpenAPIOperation:
     method: str
     path: str
     definition: Dict[str, Any]
+
+
+@dataclass
+class OperationCatalogEntry:
+    """Catalog entry for an OpenAPI operation, used by Registry/Planner.
+
+    Carries enough structural info to (1) prompt an LLM about what the
+    operation does, and (2) drive ActionCallOpenAPI at runtime.
+    """
+
+    service: str
+    operation_id: str
+    method: str
+    path: str
+    summary: str = ""
+    description: str = ""
+    tags: List[str] = field(default_factory=list)
+    parameters: List[Dict[str, Any]] = field(default_factory=list)
+    request_body: Optional[Dict[str, Any]] = None
+    responses: Dict[str, Any] = field(default_factory=dict)
+
+    def required_parameters(self) -> List[str]:
+        return [p["name"] for p in self.parameters if p.get("required")]
+
+    def to_summary_line(self) -> str:
+        """One-line summary for LLM prompts: METHOD path :: id — summary."""
+        head = f"{self.method:6s} {self.path} :: {self.operation_id}"
+        if self.summary:
+            head = f"{head} — {self.summary}"
+        return head
 
 
 class OpenAPIClient:
@@ -158,6 +188,85 @@ class OpenAPIClient:
             url = servers[0].get("url")
             return str(url) if url else None
         return None
+
+    def extract_catalog(self, service: str) -> List[OperationCatalogEntry]:
+        """Walk the spec and produce one entry per operation.
+
+        operationId is required (entries without it are skipped) so the
+        Registry / Planner can address operations by stable id rather than
+        method+path strings.
+        """
+        entries: List[OperationCatalogEntry] = []
+        paths = self.spec.get("paths") or {}
+        if not isinstance(paths, Mapping):
+            return entries
+
+        for path, path_item in paths.items():
+            if not isinstance(path_item, Mapping):
+                continue
+            path_level_params = path_item.get("parameters") or []
+            for method, operation in path_item.items():
+                if method.lower() not in self.HTTP_METHODS:
+                    continue
+                if not isinstance(operation, Mapping):
+                    continue
+                operation_id = operation.get("operationId")
+                if not operation_id:
+                    continue
+
+                merged_params: List[Dict[str, Any]] = []
+                seen_keys = set()
+                for raw in list(path_level_params) + list(operation.get("parameters") or []):
+                    if not isinstance(raw, Mapping):
+                        continue
+                    name = raw.get("name")
+                    location = raw.get("in")
+                    if not name or not location:
+                        continue
+                    key = (name, location)
+                    if key in seen_keys:
+                        continue
+                    seen_keys.add(key)
+                    schema = raw.get("schema") or {}
+                    merged_params.append(
+                        {
+                            "name": name,
+                            "in": location,
+                            "required": bool(raw.get("required", location == "path")),
+                            "type": schema.get("type"),
+                            "description": raw.get("description", ""),
+                        }
+                    )
+
+                request_body = None
+                rb = operation.get("requestBody")
+                if isinstance(rb, Mapping):
+                    content = rb.get("content") or {}
+                    json_media = content.get("application/json") if isinstance(content, Mapping) else None
+                    request_body = {
+                        "required": bool(rb.get("required", False)),
+                        "schema": (json_media or {}).get("schema") if isinstance(json_media, Mapping) else None,
+                    }
+
+                tags = operation.get("tags") or []
+                if not isinstance(tags, list):
+                    tags = []
+
+                entries.append(
+                    OperationCatalogEntry(
+                        service=service,
+                        operation_id=operation_id,
+                        method=method.upper(),
+                        path=path,
+                        summary=str(operation.get("summary") or ""),
+                        description=str(operation.get("description") or ""),
+                        tags=[str(t) for t in tags],
+                        parameters=merged_params,
+                        request_body=request_body,
+                        responses=dict(operation.get("responses") or {}),
+                    )
+                )
+        return entries
 
 
 def get_path_value(data: Any, path: str) -> Any:

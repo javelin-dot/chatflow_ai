@@ -8,6 +8,7 @@ Agent主类
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import importlib.util
 import inspect
@@ -101,8 +102,41 @@ def _load_custom_actions(actions_path: Path) -> List[str]:
     finally:
         # 清理 sys.path（可选，保留以便后续使用）
         pass
-    
+
     return registered_actions
+
+
+def _register_openapi_services(services_config: Dict[str, Dict[str, Any]]) -> None:
+    """Register OpenAPI services from endpoints.yml into the global registry.
+
+    Failures are logged but do not block Agent startup — services can be
+    reloaded later via the registry once the upstream becomes reachable.
+    """
+    from chatflow_ai.integrations import (
+        get_registry,
+        OpenAPICallError,
+        service_spec_from_dict,
+    )
+
+    registry = get_registry()
+    for name, raw in services_config.items():
+        try:
+            spec = service_spec_from_dict(name, raw)
+        except OpenAPICallError as e:
+            logger.error(f"Invalid OpenAPI service config '{name}': {e}")
+            continue
+
+        try:
+            asyncio.run(registry.register(spec))
+        except RuntimeError:
+            # Already inside an event loop (e.g. test harness, async CLI).
+            # Schedule the coroutine on the running loop instead of nesting.
+            loop = asyncio.get_event_loop()
+            loop.create_task(registry.register(spec))
+        except Exception as e:
+            logger.error(
+                f"Failed to register OpenAPI service '{name}' from {spec.spec}: {e}"
+            )
 
 
 @dataclass
@@ -520,6 +554,10 @@ class Agent:
             path=tracker_store_config.path,
         )
         logger.info(f"创建 TrackerStore: type={tracker_store_config.type}, path={tracker_store_config.path}")
+
+        # 注册 endpoints.yml 中声明的 OpenAPI 服务到全局 Registry
+        if endpoints_config.services:
+            _register_openapi_services(endpoints_config.services)
         
         # 创建策略
         from chatflow_ai.policies import EnterpriseSearchPolicyConfig

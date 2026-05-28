@@ -426,7 +426,11 @@ class EndpointsConfig:
     nlg: Optional[NLGConfig] = None
     models: Dict[str, LLMConfig] = field(default_factory=dict)
     embeddings: Dict[str, EmbeddingsConfig] = field(default_factory=dict)
-    
+    # Raw OpenAPI service entries; parsed into ServiceSpec by the registry
+    # at Agent startup. Kept as plain dicts here to avoid pulling the
+    # integrations module into the config import path.
+    services: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
     @classmethod
     def load(cls, endpoints_path: Union[str, Path] = DEFAULT_ENDPOINTS_PATH) -> "EndpointsConfig":
         """从端点配置文件加载配置"""
@@ -468,6 +472,13 @@ class EndpointsConfig:
             config.get("vector_store", {})
         )
         
+        services_raw = config.get("services") or {}
+        services_dict: Dict[str, Dict[str, Any]] = {}
+        if isinstance(services_raw, dict):
+            for service_name, service_config in services_raw.items():
+                if isinstance(service_config, dict):
+                    services_dict[str(service_name)] = service_config
+
         return cls(
             tracker_store=TrackerStoreConfig.from_dict(
                 config.get("tracker_store", {})
@@ -476,6 +487,7 @@ class EndpointsConfig:
             nlg=nlg_config,
             models=models_dict,
             embeddings=embeddings_dict,
+            services=services_dict,
         )
     
     def get_model_config(self, model_name: str) -> Optional[LLMConfig]:

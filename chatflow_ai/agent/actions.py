@@ -598,16 +598,24 @@ class ActionCallOpenAPI(Action):
         domain: Optional["Domain"] = None,
         **kwargs: Any,
     ) -> ActionResult:
-        """调用外部 OpenAPI operation。"""
+        """调用外部 OpenAPI operation。
+
+        优先解析 service + operation_id（走启动期注册的全局 Registry）；
+        若未提供 service，则回退到旧格式 spec + operation_id（每次现场加载 spec）。
+        """
         result = ActionResult()
         openapi_config = kwargs.get("openapi") or {}
 
+        service = openapi_config.get("service")
         spec = openapi_config.get("spec")
         operation_id = openapi_config.get("operation_id")
-        if not spec or not operation_id:
+
+        if not operation_id or (not service and not spec):
             result.success = False
-            result.add_response("OpenAPI调用配置不完整：缺少 spec 或 operation_id。")
-            result.metadata["error"] = "missing_openapi_spec_or_operation_id"
+            result.add_response(
+                "OpenAPI 调用配置不完整：需要 operation_id，以及 service 或 spec 之一。"
+            )
+            result.metadata["error"] = "missing_openapi_service_or_spec"
             return result
 
         from chatflow_ai.integrations.openapi import (
@@ -625,16 +633,29 @@ class ActionCallOpenAPI(Action):
         request_body = resolve_mapping(openapi_config.get("request_body", {}), variables)
 
         try:
-            client = await OpenAPIClient.from_source(
-                spec,
-                base_url=openapi_config.get("base_url"),
-                timeout=timeout,
-                default_headers=headers,
-            )
+            if service:
+                from chatflow_ai.integrations import get_registry
+
+                client, _entry = get_registry().resolve(service, operation_id)
+                if headers:
+                    # Per-call headers override the registry's resolved defaults.
+                    call_headers = headers
+                else:
+                    call_headers = None
+            else:
+                client = await OpenAPIClient.from_source(
+                    spec,
+                    base_url=openapi_config.get("base_url"),
+                    timeout=timeout,
+                    default_headers=headers,
+                )
+                call_headers = None
+
             api_response = await client.call_operation(
                 operation_id,
                 parameters=parameters,
                 request_body=request_body,
+                headers=call_headers,
             )
         except OpenAPICallError as e:
             result.success = False
@@ -662,8 +683,16 @@ class ActionCallOpenAPI(Action):
             ok=api_response.get("ok"),
         )
 
+        # Walk from the full response envelope so doc-promised paths like
+        # body.data.id, headers.x-request-id, status_code resolve correctly.
+        response_envelope = {
+            "body": response_body,
+            "headers": api_response.get("headers", {}),
+            "status_code": api_response.get("status_code"),
+            "ok": api_response.get("ok"),
+        }
         for slot_name, body_path in response_config.get("slots", {}).items():
-            slot_value = get_path_value(response_body, str(body_path))
+            slot_value = get_path_value(response_envelope, str(body_path))
             if slot_value is not None:
                 tracker.set_slot(slot_name, slot_value)
                 result.add_event("slot_set", name=slot_name, value=slot_value)
