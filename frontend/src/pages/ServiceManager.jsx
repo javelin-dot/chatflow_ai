@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Input, Button, Table, message, Space, Popconfirm } from 'antd'
+import { Card, Input, Button, Table, message, Space, Popconfirm, Modal } from 'antd'
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { servicesApi } from '../api/client.js'
 
@@ -7,7 +7,10 @@ function ServiceManager() {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
-  const [editingService, setEditingService] = useState(null)
+  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editUrl, setEditUrl] = useState('')
+  const [editBaseUrl, setEditBaseUrl] = useState('')
   const [services, setServices] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -27,11 +30,17 @@ function ServiceManager() {
     fetchServices()
   }, [])
 
-  const resetForm = () => {
+  const resetRegisterForm = () => {
     setName('')
     setUrl('')
     setBaseUrl('')
-    setEditingService(null)
+  }
+
+  const resetEditForm = () => {
+    setEditName('')
+    setEditUrl('')
+    setEditBaseUrl('')
+    setEditModalVisible(false)
   }
 
   const handleRegister = async () => {
@@ -46,31 +55,47 @@ function ServiceManager() {
         base_url: baseUrl.trim() || undefined,
       }
       await servicesApi.register(payload)
-      message.success(editingService ? '更新成功' : '注册成功')
-      resetForm()
+      message.success('注册成功')
+      resetRegisterForm()
       fetchServices()
     } catch (err) {
       const msg = err?.response?.data?.detail || err.message || '未知错误'
-      message.error(`${editingService ? '更新' : '注册'}失败: ${msg}`)
+      message.error(`注册失败: ${msg}`)
     }
   }
 
   const handleEdit = (record) => {
-    setEditingService(record.name)
-    setName(record.name)
-    // We don't have the original spec_url stored in the list response,
-    // so the user needs to re-enter it when editing.
-    setUrl('')
-    setBaseUrl(record.base_url || '')
+    setEditName(record.name)
+    setEditUrl('')
+    setEditBaseUrl(record.base_url || '')
+    setEditModalVisible(true)
+  }
+
+  const handleEditSave = async () => {
+    if (!editUrl.trim()) {
+      message.warning('请填写Swagger URL')
+      return
+    }
+    try {
+      const payload = {
+        name: editName,
+        spec_url: editUrl.trim(),
+        base_url: editBaseUrl.trim() || undefined,
+      }
+      await servicesApi.register(payload)
+      message.success('更新成功')
+      resetEditForm()
+      fetchServices()
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err.message || '未知错误'
+      message.error(`更新失败: ${msg}`)
+    }
   }
 
   const handleDelete = async (serviceName) => {
     try {
       await servicesApi.remove(serviceName)
       message.success('删除成功')
-      if (editingService === serviceName) {
-        resetForm()
-      }
       fetchServices()
     } catch (err) {
       const msg = err?.response?.data?.detail || err.message || '未知错误'
@@ -112,13 +137,12 @@ function ServiceManager() {
 
   return (
     <Space direction="vertical" style={{ display: 'flex' }} size="large">
-      <Card title={editingService ? `编辑服务: ${editingService}` : '注册Swagger服务'}>
+      <Card title="注册Swagger服务">
         <Space direction="vertical" style={{ display: 'flex' }}>
           <Input
             placeholder="服务名称（如 kyc）"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={!!editingService}
           />
           <Input
             placeholder="Swagger URL"
@@ -130,14 +154,9 @@ function ServiceManager() {
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
           />
-          <Space>
-            <Button type="primary" onClick={handleRegister}>
-              {editingService ? '保存修改' : '注册'}
-            </Button>
-            {editingService && (
-              <Button onClick={resetForm}>取消</Button>
-            )}
-          </Space>
+          <Button type="primary" onClick={handleRegister}>
+            注册
+          </Button>
         </Space>
       </Card>
 
@@ -150,6 +169,33 @@ function ServiceManager() {
           pagination={false}
         />
       </Card>
+
+      <Modal
+        title={`编辑服务: ${editName}`}
+        open={editModalVisible}
+        onOk={handleEditSave}
+        onCancel={resetEditForm}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Space direction="vertical" style={{ display: 'flex', width: '100%' }}>
+          <Input
+            placeholder="服务名称"
+            value={editName}
+            disabled
+          />
+          <Input
+            placeholder="Swagger URL"
+            value={editUrl}
+            onChange={(e) => setEditUrl(e.target.value)}
+          />
+          <Input
+            placeholder="Base URL（可选，覆盖spec中的服务器地址）"
+            value={editBaseUrl}
+            onChange={(e) => setEditBaseUrl(e.target.value)}
+          />
+        </Space>
+      </Modal>
     </Space>
   )
 }
