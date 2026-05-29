@@ -123,9 +123,9 @@ async def list_services() -> List[ServiceSummary]:
     for name in services:
         try:
             catalog = registry.get_catalog(name)
-            # base_url is not exposed by registry; omit for MVP
+            spec = registry.get_spec(name)
             result.append(
-                ServiceSummary(name=name, operation_count=len(catalog), base_url=None)
+                ServiceSummary(name=name, operation_count=len(catalog), base_url=spec.base_url)
             )
         except OpenAPICallError:
             continue

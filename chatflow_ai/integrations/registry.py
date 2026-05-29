@@ -110,6 +110,12 @@ class OpenAPIRegistry:
             raise OpenAPICallError(f"Unknown service: {service}")
         return client
 
+    def get_spec(self, service: str) -> ServiceSpec:
+        spec = self._specs.get(service)
+        if spec is None:
+            raise OpenAPICallError(f"Unknown service: {service}")
+        return spec
+
     def get_catalog(self, service: str) -> List[OperationCatalogEntry]:
         if service not in self._catalogs:
             raise OpenAPICallError(f"Unknown service: {service}")
