@@ -52,6 +52,16 @@ class WorkflowRunner:
 
             # Resolve client and call operation
             client, _ = self._registry.resolve(template.service_id, step.operation_id)
+
+            # Record request details for debugging
+            step_result.request = {
+                "method": client.get_operation(step.operation_id).method,
+                "base_url": client.base_url,
+                "parameters": parameters,
+                "body": request_body,
+                "headers": headers,
+            }
+
             response = await client.call_operation(
                 step.operation_id,
                 parameters=parameters,

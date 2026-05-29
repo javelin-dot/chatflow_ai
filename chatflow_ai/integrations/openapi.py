@@ -15,6 +15,7 @@ which operation is callable and how slots map into request data.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,6 +24,8 @@ from urllib.parse import quote
 
 import httpx
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAPICallError(Exception):
@@ -225,6 +228,13 @@ class OpenAPIClient:
             url_path = url_path.replace("{" + name + "}", value)
 
         url = f"{self.base_url}{url_path}"
+        logger.info(
+            "OpenAPI call %s %s (params=%s, body=%s)",
+            operation.method,
+            url,
+            parameters,
+            request_body,
+        )
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.request(
@@ -247,6 +257,8 @@ class OpenAPIClient:
             "ok": 200 <= response.status_code < 300,
             "headers": dict(response.headers),
             "body": parsed_body,
+            "url": url,
+            "method": operation.method,
         }
 
     def _base_url_from_spec(self) -> Optional[str]:
