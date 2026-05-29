@@ -75,6 +75,7 @@ class LoginRequest(BaseModel):
     credentials: Dict[str, Any]
     token_path: Optional[str] = "data.token"
     token_prefix: Optional[str] = "Bearer "
+    target_service: Optional[str] = None
 
 
 class LoginResponse(BaseModel):
@@ -284,13 +285,14 @@ async def create_session(body: LoginRequest) -> LoginResponse:
     """Login to a test environment and store the token."""
     registry = get_registry()
     try:
-        token = await _token_mgr.login(
+        token, cookies = await _token_mgr.login(
             registry=registry,
             service_id=body.service_id,
             operation_id=body.operation_id,
             credentials=body.credentials,
             token_path=body.token_path or "data.token",
             token_prefix=body.token_prefix or "Bearer ",
+            target_service=body.target_service,
         )
     except OpenAPICallError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -300,7 +302,7 @@ async def create_session(body: LoginRequest) -> LoginResponse:
         logger.exception("Login failed")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    return LoginResponse(token=token, service_id=body.service_id)
+    return LoginResponse(token=token, service_id=body.target_service or body.service_id)
 
 
 @router.delete("/sessions")

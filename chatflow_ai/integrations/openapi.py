@@ -205,6 +205,7 @@ class OpenAPIClient:
         parameters: Optional[Mapping[str, Any]] = None,
         request_body: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
+        cookies: Optional[Mapping[str, str]] = None,
     ) -> Dict[str, Any]:
         """Call an operation and return response metadata plus parsed body."""
         if not self.base_url:
@@ -229,11 +230,12 @@ class OpenAPIClient:
 
         url = f"{self.base_url}{url_path}"
         logger.info(
-            "OpenAPI call %s %s (params=%s, body=%s)",
+            "OpenAPI call %s %s (params=%s, body=%s, cookies=%s)",
             operation.method,
             url,
             parameters,
             request_body,
+            cookies,
         )
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -243,6 +245,7 @@ class OpenAPIClient:
                 params=parameters or None,
                 json=request_body or None,
                 headers=request_headers,
+                cookies=dict(cookies) if cookies else None,
             )
 
         parsed_body: Any
@@ -252,6 +255,11 @@ class OpenAPIClient:
         else:
             parsed_body = response.text
 
+        # Extract cookies from Set-Cookie headers
+        response_cookies: Dict[str, str] = {}
+        for cookie in response.cookies.jar:
+            response_cookies[cookie.name] = cookie.value
+
         return {
             "status_code": response.status_code,
             "ok": 200 <= response.status_code < 300,
@@ -259,6 +267,7 @@ class OpenAPIClient:
             "body": parsed_body,
             "url": url,
             "method": operation.method,
+            "cookies": response_cookies,
         }
 
     def _base_url_from_spec(self) -> Optional[str]:

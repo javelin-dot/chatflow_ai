@@ -47,8 +47,8 @@ class WorkflowRunner:
             if step.body_mapping is not None:
                 request_body = self._resolve_mapping(step.body_mapping, variables)
 
-            # Get auth headers
-            headers = self._token_manager.inject_auth({}, template.service_id)
+            # Get auth headers and cookies
+            headers, cookies = self._token_manager.inject_auth({}, template.service_id)
 
             # Resolve client and call operation
             client, _ = self._registry.resolve(template.service_id, step.operation_id)
@@ -60,6 +60,7 @@ class WorkflowRunner:
                 "parameters": parameters,
                 "body": request_body,
                 "headers": headers,
+                "cookies": cookies,
             }
 
             response = await client.call_operation(
@@ -67,6 +68,7 @@ class WorkflowRunner:
                 parameters=parameters,
                 request_body=request_body,
                 headers=headers,
+                cookies=cookies,
             )
 
             step_result.response = response
