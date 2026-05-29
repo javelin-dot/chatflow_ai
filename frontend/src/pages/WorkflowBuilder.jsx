@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Card,
   Input,
@@ -8,12 +8,14 @@ import {
   Tag,
   Divider,
   message,
+  Tooltip,
 } from 'antd'
 import {
   PlusOutlined,
   DeleteOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons'
 import { servicesApi, workflowsApi } from '../api/client.js'
 
@@ -22,6 +24,7 @@ function WorkflowBuilder() {
   const [selectedService, setSelectedService] = useState('')
   const [services, setServices] = useState([])
   const [operations, setOperations] = useState({}) // { [serviceId]: [ops] }
+  const [fetchedServices, setFetchedServices] = useState(new Set())
   const [steps, setSteps] = useState([])
 
   useEffect(() => {
@@ -38,7 +41,7 @@ function WorkflowBuilder() {
 
   useEffect(() => {
     if (!selectedService) return
-    if (operations[selectedService]) return
+    if (fetchedServices.has(selectedService)) return
 
     const fetchOperations = async () => {
       try {
@@ -47,16 +50,17 @@ function WorkflowBuilder() {
           ...prev,
           [selectedService]: res.data || [],
         }))
+        setFetchedServices((prev) => new Set(prev).add(selectedService))
       } catch (err) {
         message.error('获取接口列表失败')
       }
     }
     fetchOperations()
-  }, [selectedService, operations])
+  }, [selectedService, fetchedServices])
 
   const addStep = () => {
     const newStep = {
-      id: `step_${steps.length + 1}`,
+      id: `step_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       name: '',
       operation_id: '',
       parameter_mapping: {},
@@ -93,24 +97,28 @@ function WorkflowBuilder() {
     return ops.find((op) => op.operation_id === operationId)
   }
 
+  const validation = useMemo(() => {
+    const errors = []
+    if (!workflowName.trim()) errors.push('请填写流程名称')
+    if (!selectedService) errors.push('请选择服务')
+    if (steps.length === 0) errors.push('请至少添加一个步骤')
+    const missingOpSteps = steps
+      .map((s, i) => (!s.operation_id ? i + 1 : null))
+      .filter(Boolean)
+    if (missingOpSteps.length > 0) {
+      errors.push(`步骤 ${missingOpSteps.join(', ')} 未选择接口`)
+    }
+    return {
+      ok: errors.length === 0,
+      errors,
+      missingOpSteps,
+    }
+  }, [workflowName, selectedService, steps])
+
   const handleSave = async () => {
-    if (!workflowName.trim()) {
-      message.warning('请填写流程名称')
+    if (!validation.ok) {
+      message.warning(validation.errors[0])
       return
-    }
-    if (!selectedService) {
-      message.warning('请选择服务')
-      return
-    }
-    if (steps.length === 0) {
-      message.warning('请至少添加一个步骤')
-      return
-    }
-    for (const step of steps) {
-      if (!step.operation_id) {
-        message.warning('请为每个步骤选择接口')
-        return
-      }
     }
 
     const payload = {
@@ -157,6 +165,7 @@ function WorkflowBuilder() {
             placeholder="流程名称（如：创建KYC客户）"
             value={workflowName}
             onChange={(e) => setWorkflowName(e.target.value)}
+            status={!workflowName.trim() && steps.length > 0 ? 'error' : ''}
           />
           <Select
             placeholder="选择服务"
@@ -166,8 +175,10 @@ function WorkflowBuilder() {
             }
             value={selectedService || undefined}
             onChange={(value) => {
-              setSelectedService(value)
-              setSteps([])
+              if (value !== selectedService) {
+                setSelectedService(value)
+                setSteps([])
+              }
             }}
             options={serviceOptions}
             style={{ width: '100%' }}
@@ -177,10 +188,20 @@ function WorkflowBuilder() {
 
       {steps.map((step, index) => {
         const op = getOperationById(step.operation_id)
+        const missingOp = !step.operation_id
         return (
           <Card
             key={step.id}
-            title={`步骤 ${index + 1}: ${step.name || '未命名'}`}
+            title={
+              <Space>
+                <span>
+                  步骤 {index + 1}: {step.name || '未命名'}
+                </span>
+                {missingOp && (
+                  <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
+                )}
+              </Space>
+            }
             extra={
               <Space>
                 <Button
@@ -203,6 +224,7 @@ function WorkflowBuilder() {
                 />
               </Space>
             }
+            style={missingOp ? { borderColor: '#ff4d4f' } : undefined}
           >
             <Space direction="vertical" style={{ display: 'flex' }}>
               <Select
@@ -219,6 +241,7 @@ function WorkflowBuilder() {
                 }}
                 options={operationOptions}
                 style={{ width: '100%' }}
+                status={missingOp ? 'error' : undefined}
               />
               <Input
                 placeholder="步骤名称（可选）"
@@ -312,9 +335,19 @@ function WorkflowBuilder() {
         添加步骤
       </Button>
 
-      <Button type="primary" size="large" block onClick={handleSave}>
-        保存流程
-      </Button>
+      <Tooltip
+        title={!validation.ok ? validation.errors.join('；') : ''}
+      >
+        <Button
+          type="primary"
+          size="large"
+          block
+          onClick={handleSave}
+          disabled={!validation.ok}
+        >
+          保存流程
+        </Button>
+      </Tooltip>
     </Space>
   )
 }
