@@ -9,9 +9,7 @@ import {
 
 import ServiceManager from './pages/ServiceManager.jsx'
 import WorkflowBuilder from './pages/WorkflowBuilder.jsx'
-function WorkflowRunner() {
-  return <div>Workflow Runner (coming soon)</div>
-}
+import WorkflowRunner from './pages/WorkflowRunner.jsx'
 
 const { Header, Content } = Layout
 
