@@ -5,11 +5,13 @@ import {
   CloudServerOutlined,
   BuildOutlined,
   PlayCircleOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons'
 
 import ServiceManager from './pages/ServiceManager.jsx'
 import WorkflowBuilder from './pages/WorkflowBuilder.jsx'
 import WorkflowRunner from './pages/WorkflowRunner.jsx'
+import SessionManager from './pages/SessionManager.jsx'
 
 const { Header, Content } = Layout
 
@@ -29,6 +31,11 @@ function App() {
       key: 'runner',
       icon: <PlayCircleOutlined />,
       label: <Link to="/runner">流程执行</Link>,
+    },
+    {
+      key: 'sessions',
+      icon: <SafetyCertificateOutlined />,
+      label: <Link to="/sessions">认证管理</Link>,
     },
   ]
 
@@ -50,6 +57,7 @@ function App() {
           <Route path="/" element={<ServiceManager />} />
           <Route path="/builder" element={<WorkflowBuilder />} />
           <Route path="/runner" element={<WorkflowRunner />} />
+          <Route path="/sessions" element={<SessionManager />} />
         </Routes>
       </Content>
     </Layout>

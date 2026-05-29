@@ -31,7 +31,7 @@ export const runsApi = {
 
 export const sessionsApi = {
   login: (data) => api.post('/sessions', data),
-  clear: () => api.delete('/sessions'),
+  clear: (serviceId) => api.delete('/sessions', { params: serviceId ? { service_id: serviceId } : undefined }),
   get: () => api.get('/sessions'),
 }
 
