@@ -15,7 +15,6 @@ import {
   DeleteOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
-  ExclamationCircleOutlined,
 } from '@ant-design/icons'
 import { servicesApi, workflowsApi } from '../api/client.js'
 
@@ -192,16 +191,7 @@ function WorkflowBuilder() {
         return (
           <Card
             key={step.id}
-            title={
-              <Space>
-                <span>
-                  步骤 {index + 1}: {step.name || '未命名'}
-                </span>
-                {missingOp && (
-                  <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
-                )}
-              </Space>
-            }
+            title={`步骤 ${index + 1}: ${step.name || '未命名'}`}
             extra={
               <Space>
                 <Button
@@ -224,11 +214,10 @@ function WorkflowBuilder() {
                 />
               </Space>
             }
-            style={missingOp ? { borderColor: '#ff4d4f' } : undefined}
           >
             <Space direction="vertical" style={{ display: 'flex' }}>
               <Select
-                placeholder="选择接口"
+                placeholder="选择接口 *"
                 showSearch
                 filterOption={(input, option) =>
                   (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -320,7 +309,7 @@ function WorkflowBuilder() {
                 </>
               )}
               <Input
-                placeholder="保存响应到变量（如 login_result）"
+                placeholder="保存响应到变量（可选，如 login_result）"
                 value={step.save_response_to}
                 onChange={(e) =>
                   updateStep(index, 'save_response_to', e.target.value)
