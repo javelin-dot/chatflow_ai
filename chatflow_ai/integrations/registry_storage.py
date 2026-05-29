@@ -14,8 +14,10 @@ class RegistryStorage:
     """JSON file storage for registered service specs."""
 
     def __init__(self, base_dir: str | None = None) -> None:
+        # MVP: JSON file storage under ~/.chatflow/mvp-data/
+        # Future: swap this for SqlAlchemyStorage with a DB connection.
         if base_dir is None:
-            base_dir = str(Path.home() / ".chatflow" / "registry")
+            base_dir = str(Path.home() / ".chatflow" / "mvp-data" / "registry")
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 

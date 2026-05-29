@@ -9,8 +9,10 @@ from chatflow_ai.workflow.models import ExecutionContext, WorkflowTemplate
 
 class WorkflowStorage:
     def __init__(self, base_dir: str | None = None):
+        # MVP: JSON file storage under ~/.chatflow/mvp-data/
+        # Future: swap this for SqlAlchemyStorage with a DB connection.
         if base_dir is None:
-            base_dir = str(Path.home() / ".chatflow" / "workflows")
+            base_dir = str(Path.home() / ".chatflow" / "mvp-data" / "workflows")
         self.base_dir = Path(base_dir)
         self.templates_dir = self.base_dir / "templates"
         self.history_dir = self.base_dir / "history"
