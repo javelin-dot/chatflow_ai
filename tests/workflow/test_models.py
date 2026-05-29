@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
-from pydantic import BaseModel, Field
 
 from chatflow_ai.workflow.models import (
     ExecutionContext,
@@ -81,3 +80,35 @@ def test_workflow_template_roundtrip():
     # Also assert datetime fields survive roundtrip (as ISO strings in JSON mode)
     assert isinstance(restored.created_at, datetime)
     assert isinstance(restored.updated_at, datetime)
+
+
+def test_step_result_defaults():
+    """StepResult with only step_id uses correct defaults."""
+    result = StepResult(step_id="step_1")
+    assert result.step_id == "step_1"
+    assert result.status == "pending"
+    assert result.request == {}
+    assert result.response == {}
+    assert result.extracted == {}
+
+
+def test_execution_context_defaults():
+    """ExecutionContext with workflow_id and run_id uses correct defaults."""
+    ctx = ExecutionContext(workflow_id="wf_1", run_id="run_1")
+    assert ctx.workflow_id == "wf_1"
+    assert ctx.run_id == "run_1"
+    assert ctx.status == "running"
+    assert ctx.step_results == {}
+    assert ctx.variables == {}
+
+
+def test_execution_context_with_results():
+    """ExecutionContext stores provided step_results correctly."""
+    result = StepResult(step_id="step_1", status="completed")
+    ctx = ExecutionContext(
+        workflow_id="wf_1",
+        run_id="run_1",
+        step_results={"step_1": result},
+    )
+    assert ctx.step_results == {"step_1": result}
+    assert ctx.step_results["step_1"].status == "completed"
