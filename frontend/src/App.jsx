@@ -8,9 +8,7 @@ import {
 } from '@ant-design/icons'
 
 import ServiceManager from './pages/ServiceManager.jsx'
-function WorkflowBuilder() {
-  return <div>Workflow Builder (coming soon)</div>
-}
+import WorkflowBuilder from './pages/WorkflowBuilder.jsx'
 function WorkflowRunner() {
   return <div>Workflow Runner (coming soon)</div>
 }
