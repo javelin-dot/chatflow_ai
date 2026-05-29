@@ -7,10 +7,7 @@ import {
   PlayCircleOutlined,
 } from '@ant-design/icons'
 
-// Placeholder pages (will be implemented in later tasks)
-function ServiceManager() {
-  return <div>Service Manager (coming soon)</div>
-}
+import ServiceManager from './pages/ServiceManager.jsx'
 function WorkflowBuilder() {
   return <div>Workflow Builder (coming soon)</div>
 }
