@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from chatflow_ai.integrations.openapi import OpenAPICallError
 from chatflow_ai.integrations.registry import (
     get_registry,
-    reset_registry,
     service_spec_from_dict,
 )
 from chatflow_ai.workflow.models import ExecutionContext, WorkflowTemplate
@@ -94,7 +93,6 @@ class SessionSummary(BaseModel):
 async def register_service(body: RegisterServiceRequest) -> RegisterServiceResponse:
     """Register a Swagger/OpenAPI service by URL."""
     try:
-        reset_registry()
         registry = get_registry()
         spec = service_spec_from_dict(
             body.name,
@@ -106,6 +104,13 @@ async def register_service(body: RegisterServiceRequest) -> RegisterServiceRespo
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("Failed to register service")
+        # Distinguish network errors from other failures for better UX
+        exc_str = str(exc).lower()
+        if "connect" in exc_str or "timeout" in exc_str or "dns" in exc_str or "name or service not known" in exc_str:
+            raise HTTPException(
+                status_code=502,
+                detail=f"无法连接到指定的 Swagger URL ({body.spec_url})，请检查地址是否正确或网络是否可达。",
+            ) from exc
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
