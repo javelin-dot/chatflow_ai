@@ -25,7 +25,7 @@ class SessionTokenManager:
         service_id: str,
         operation_id: str,
         credentials: Dict[str, Any],
-        token_path: str = "body.data.token",
+        token_path: str = "data.token",
         token_prefix: str = "Bearer ",
     ) -> str:
         """Call the login operation, extract and store token."""

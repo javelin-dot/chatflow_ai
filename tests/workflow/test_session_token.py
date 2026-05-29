@@ -13,7 +13,7 @@ class FakeClient:
 
     def __init__(self, response: Optional[Dict[str, Any]] = None) -> None:
         self.calls: list = []
-        self._response = response or {"body": {"data": {"token": "abc123"}}}
+        self._response = response or {"data": {"token": "abc123"}}
 
     async def call_operation(
         self,
@@ -110,12 +110,12 @@ async def test_refresh() -> None:
         service_id="test_service",
         operation_id="login",
         credentials={"username": "user", "password": "pass"},
-        token_path="body.data.token",
+        token_path="data.token",
         token_prefix="Token ",
     )
 
     # Change response for refresh
-    fake_client._response = {"body": {"data": {"token": "new_token"}}}
+    fake_client._response = {"data": {"token": "new_token"}}
     token = await manager.refresh(fake_registry, "test_service")
 
     assert token == "Token new_token"
