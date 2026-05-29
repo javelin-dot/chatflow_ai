@@ -160,6 +160,10 @@ function WorkflowBuilder() {
           />
           <Select
             placeholder="选择服务"
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
             value={selectedService || undefined}
             onChange={(value) => {
               setSelectedService(value)
@@ -203,6 +207,10 @@ function WorkflowBuilder() {
             <Space direction="vertical" style={{ display: 'flex' }}>
               <Select
                 placeholder="选择接口"
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
                 value={step.operation_id || undefined}
                 onChange={(value) => {
                   const newMapping = {}
