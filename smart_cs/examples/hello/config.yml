@@ -1,0 +1,42 @@
+version: "0.1"
+
+tenant:
+  id: demo
+  name: Demo Company
+  workspace: default
+
+reception:
+  channels:
+    - type: console
+
+knowledge:
+  bases:
+    - id: faq_main
+      type: faq_yaml
+      source: ./kb/faq.yml
+
+skills:
+  enabled:
+    - faq_answer
+    - handoff
+    # fallback is auto-appended by runtime if absent.
+
+policies:
+  # Phase 0 routing is done by IntentRouter (rule-based); these are kept here
+  # as the documented shape so Phase 1's PolicyEnsemble can read them directly.
+  - type: kb_policy
+    priority: 50
+  - type: handoff_policy
+    priority: 30
+  - type: fallback_policy
+    priority: 10
+
+governance:
+  guardrail:
+    enabled: true
+    block_patterns: []
+  audit:
+    enabled: true
+    sink: stderr   # demo: send audit to stderr so shell stdout stays clean
+  quota:
+    session_max_turns: 50

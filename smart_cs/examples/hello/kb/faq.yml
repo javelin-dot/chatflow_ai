@@ -1,0 +1,24 @@
+- id: greeting
+  question: 你好
+  keywords: [你好, hi, hello, 在吗]
+  answer: 您好！我是 smart_cs 智能客服 demo，您可以问我「营业时间」「怎么退款」「物流多久」，或者输入「人工」转接客服。
+
+- id: business_hours
+  question: 营业时间
+  keywords: [营业时间, 工作时间, 几点上班, 在线时间]
+  answer: 我们的客服在线时间是 09:00-22:00（北京时间，全年无休）。
+
+- id: refund
+  question: 怎么退款
+  keywords: [退款, 退钱, 申请退款, 怎么退]
+  answer: 在「我的订单」→ 选择订单 → 点击「申请退款」即可发起退款，资金将在 3 个工作日内原路退回。
+
+- id: shipping
+  question: 物流多久
+  keywords: [发货, 物流, 多久到, 配送, 快递]
+  answer: 北上广深次日达，其他地区 3 个工作日内送达。
+
+- id: invoice
+  question: 怎么开发票
+  keywords: [发票, 开票, 开发票, 报销]
+  answer: 在「我的订单」→ 选择订单 → 「申请发票」即可，支持电子发票和纸质发票，电子发票一般 30 分钟内通过邮件送达。
