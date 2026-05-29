@@ -224,9 +224,13 @@ function WorkflowBuilder() {
                 }
                 value={step.operation_id || undefined}
                 onChange={(value) => {
-                  const newMapping = {}
-                  updateStep(index, 'operation_id', value)
-                  updateStep(index, 'parameter_mapping', newMapping)
+                  const newSteps = [...steps]
+                  newSteps[index] = {
+                    ...newSteps[index],
+                    operation_id: value,
+                    parameter_mapping: {},
+                  }
+                  setSteps(newSteps)
                 }}
                 options={operationOptions}
                 style={{ width: '100%' }}
