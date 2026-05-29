@@ -101,6 +101,13 @@ class OpenAPIRegistry:
             raise OpenAPICallError(f"Unknown service: {service_name}")
         return await self.register(self._specs[service_name])
 
+    def unregister(self, service_name: str) -> None:
+        """Remove a service from the registry."""
+        self._clients.pop(service_name, None)
+        self._catalogs.pop(service_name, None)
+        self._specs.pop(service_name, None)
+        logger.info("Unregistered OpenAPI service '%s'", service_name)
+
     def services(self) -> List[str]:
         return list(self._clients.keys())
 

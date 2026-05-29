@@ -183,8 +183,12 @@ async def get_operation(service_id: str, operation_id: str) -> OperationDetail:
 
 @router.delete("/services/{service_id}")
 async def unregister_service(service_id: str) -> Dict[str, str]:
-    """Unregister a service (not implemented in MVP)."""
-    raise HTTPException(status_code=501, detail="Unregister service is not implemented in MVP")
+    """Unregister a service."""
+    registry = get_registry()
+    if service_id not in registry.services():
+        raise HTTPException(status_code=404, detail=f"Service '{service_id}' not found")
+    registry.unregister(service_id)
+    return {"status": "deleted", "service_id": service_id}
 
 
 # ---------------------------------------------------------------------------

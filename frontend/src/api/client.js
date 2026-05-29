@@ -10,6 +10,7 @@ const api = axios.create({
 export const servicesApi = {
   register: (data) => api.post('/services', data),
   list: () => api.get('/services'),
+  remove: (serviceId) => api.delete(`/services/${serviceId}`),
   getOperations: (serviceId) => api.get(`/services/${serviceId}/operations`),
   getOperation: (serviceId, operationId) =>
     api.get(`/services/${serviceId}/operations/${operationId}`),
