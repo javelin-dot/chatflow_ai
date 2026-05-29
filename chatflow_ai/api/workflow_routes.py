@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -105,8 +106,7 @@ async def register_service(body: RegisterServiceRequest) -> RegisterServiceRespo
     except Exception as exc:
         logger.exception("Failed to register service")
         # Distinguish network errors from other failures for better UX
-        exc_str = str(exc).lower()
-        if "connect" in exc_str or "timeout" in exc_str or "dns" in exc_str or "name or service not known" in exc_str:
+        if isinstance(exc, (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError)):
             raise HTTPException(
                 status_code=502,
                 detail=f"无法连接到指定的 Swagger URL ({body.spec_url})，请检查地址是否正确或网络是否可达。",
