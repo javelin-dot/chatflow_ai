@@ -33,6 +33,7 @@ from chatflow_ai.integrations.openapi import (
     OpenAPIClient,
     OperationCatalogEntry,
 )
+from chatflow_ai.integrations.registry_storage import RegistryStorage
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +71,11 @@ class ServiceSpec:
 class OpenAPIRegistry:
     """In-memory registry of OpenAPI services and their operation catalogs."""
 
-    def __init__(self) -> None:
+    def __init__(self, storage: RegistryStorage | None = None) -> None:
         self._clients: Dict[str, OpenAPIClient] = {}
         self._catalogs: Dict[str, List[OperationCatalogEntry]] = {}
         self._specs: Dict[str, ServiceSpec] = {}
+        self._storage = storage or RegistryStorage()
 
     async def register(self, spec: ServiceSpec) -> List[OperationCatalogEntry]:
         """Load the swagger document for a service and index its operations."""
@@ -87,6 +89,7 @@ class OpenAPIRegistry:
         self._clients[spec.name] = client
         self._catalogs[spec.name] = catalog
         self._specs[spec.name] = spec
+        self._storage.save(spec)
         logger.info(
             "Registered OpenAPI service '%s' from %s (%d operations)",
             spec.name,
@@ -106,7 +109,24 @@ class OpenAPIRegistry:
         self._clients.pop(service_name, None)
         self._catalogs.pop(service_name, None)
         self._specs.pop(service_name, None)
+        self._storage.delete(service_name)
         logger.info("Unregistered OpenAPI service '%s'", service_name)
+
+    async def load_from_storage(self) -> None:
+        """Load previously registered services from disk."""
+        for name in self._storage.list_names():
+            spec = self._storage.load(name)
+            if spec is None:
+                continue
+            try:
+                await self.register(spec)
+            except Exception as exc:
+                logger.warning(
+                    "Failed to reload service '%s' from %s: %s",
+                    name,
+                    spec.spec,
+                    exc,
+                )
 
     def services(self) -> List[str]:
         return list(self._clients.keys())

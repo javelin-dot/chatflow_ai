@@ -1,9 +1,20 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from chatflow_ai.api.workflow_routes import router
+from chatflow_ai.integrations.registry import get_registry
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: reload previously registered services from disk."""
+    registry = get_registry()
+    await registry.load_from_storage()
+    yield
 
 
 def create_workflow_app() -> FastAPI:
@@ -14,6 +25,7 @@ def create_workflow_app() -> FastAPI:
         version="0.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     app.add_middleware(
