@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from chatflow_ai.integrations.registry import ServiceSpec
+from chatflow_ai.integrations.service_spec import ServiceSpec
 
 
 class RegistryStorage:
