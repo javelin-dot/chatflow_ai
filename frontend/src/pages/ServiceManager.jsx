@@ -66,7 +66,7 @@ function ServiceManager() {
 
   const handleEdit = (record) => {
     setEditName(record.name)
-    setEditUrl('')
+    setEditUrl(record.spec_url || '')
     setEditBaseUrl(record.base_url || '')
     setEditModalVisible(true)
   }

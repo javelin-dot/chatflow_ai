@@ -44,6 +44,7 @@ class ServiceSummary(BaseModel):
     name: str
     operation_count: int
     base_url: Optional[str] = None
+    spec_url: Optional[str] = None
 
 
 class OperationDetail(BaseModel):
@@ -125,7 +126,7 @@ async def list_services() -> List[ServiceSummary]:
             catalog = registry.get_catalog(name)
             spec = registry.get_spec(name)
             result.append(
-                ServiceSummary(name=name, operation_count=len(catalog), base_url=spec.base_url)
+                ServiceSummary(name=name, operation_count=len(catalog), base_url=spec.base_url, spec_url=spec.spec)
             )
         except OpenAPICallError:
             continue
